@@ -19,8 +19,9 @@
 글 제목, 단어 내용, 퀴즈 문항은 저장하지 않습니다.
 
 ## API (supabase-js)
-- 기록 올리기: `from('daily_progress').upsert({ user_id, day, language, study_seconds, ... })`
-- 친구 연결: `rpc('connect_with_code', { p_code })` (내 코드는 `profiles.invite_code`)
+- 기록 올리기: 키 열(user_id, day, language)은 수정 권한이 없어 `upsert`는 막힙니다. `update(숫자들).eq(user_id, day, language)`를 먼저 하고 없으면 `insert`합니다.
+- 친구 연결(코드 없이): `rpc('connect_partner')`. 짝이 없는 다른 사용자 중 가장 먼저 가입한 사람과 이어지고, 아직 없으면 null입니다. 두 사람이 모두 가입한 뒤에는 Auth 설정에서 신규 가입을 끄세요.
+- 친구 연결(코드): `rpc('connect_with_code', { p_code })` (내 코드는 `profiles.invite_code`)
 - 지표 보기: `rpc('stats_for', { p_user, p_from, p_to })` → 합계, 정답률, 연속 일수. 본인과 친구만 조회됩니다.
 - 응원 보내기: `from('cheers').insert({ from_user, to_user, kind })` (같은 상대에게 하루 20번까지)
 - 받은 응원: `from('cheers').select().eq('to_user', me)`, 읽음 처리는 `update({ read_at })`
