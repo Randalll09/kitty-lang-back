@@ -6,7 +6,9 @@ BIN=${PG_BIN:-/usr/lib/postgresql/16/bin}
 D=$(mktemp -d); trap '"$BIN"/pg_ctl -D "$D/d" stop -m immediate >/dev/null 2>&1 || true; rm -rf "$D"' EXIT
 [ "$(id -u)" = 0 ] && { chown postgres "$D"; RUN="su postgres -c"; } || RUN="bash -c"
 $RUN "$BIN/initdb -D $D/d >/dev/null && $BIN/pg_ctl -D $D/d -o '-p 5499 -k $D' -l $D/log -w start >/dev/null"
-OUT=$($RUN "psql -h $D -p 5499 -d postgres -v ON_ERROR_STOP=1 -q -At -f supabase/tests/stub_auth.sql -f supabase/migrations/*.sql -f supabase/tests/rls_test.sql")
+FILES="-f supabase/tests/stub_auth.sql"
+for f in supabase/migrations/*.sql; do FILES="$FILES -f $f"; done
+OUT=$($RUN "psql -h $D -p 5499 -d postgres -v ON_ERROR_STOP=1 -q -At $FILES -f supabase/tests/rls_test.sql")
 echo "$OUT"
 if echo "$OUT" | grep -qx 'f'; then echo "FAILED: false check"; exit 1; fi
 echo "$OUT" | grep -qx 'ALL OK'

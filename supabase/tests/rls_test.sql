@@ -1,4 +1,4 @@
--- 로컬 Postgres에서 실행: psql -v ON_ERROR_STOP=1 -f supabase/tests/stub_auth.sql -f supabase/migrations/*.sql -f supabase/tests/rls_test.sql
+-- 로컬 Postgres에서 실행: psql -v ON_ERROR_STOP=1 -f supabase/tests/stub_auth.sql -f supabase/migrations/*.sql(여러 개면 각각 -f) -f supabase/tests/rls_test.sql
 \set ON_ERROR_STOP on
 insert into auth.users (id) values
   ('00000000-0000-0000-0000-00000000000a'),
@@ -56,5 +56,22 @@ select count(*) = 3 and sum(study_seconds) = 1800 as a_rows_untouched from publi
 insert into public.shared_goals (friendship_id, metric, target, start_day, end_day, created_by)
 select id, 'articles_read', 10, current_date - 6, current_date, auth.uid() from public.friendships;
 select public.goal_progress(id) = 3 as goal_ok from public.shared_goals;
+
+-- 초대 코드 없이 자동 연결: 기존 사용자를 지우고 D, E로 확인한다.
+reset role;
+delete from public.shared_goals;
+delete from auth.users where id in ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000c');
+insert into auth.users (id) values ('00000000-0000-0000-0000-00000000000d');
+set role authenticated;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000d');
+select public.connect_partner() is null as waits_alone;
+reset role;
+insert into auth.users (id) values ('00000000-0000-0000-0000-00000000000e');
+set role authenticated;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000e');
+select public.connect_partner() is not null as e_pairs_with_d;
+select public.connect_partner() = (select id from public.friendships) as idempotent;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000d');
+select public.connect_partner() = (select id from public.friendships) and count(*) = 1 as d_sees_same_pair from public.friendships;
 select 'ALL OK' as result;
 -- 위 select 결과 중 f(false)가 하나라도 있으면 실패다. tests/run.sh가 이를 검사한다.
